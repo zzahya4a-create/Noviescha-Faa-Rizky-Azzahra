@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transaksi - Peminjaman Alat</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f8fafc;color:#334155}
+header{background:white;padding:16px 25px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0}
+.brand{font-size:22px;font-weight:bold;color:#d97706}
+.layout{display:flex;min-height:calc(100vh - 60px)}aside{width:220px;background:white;padding:20px;border-right:1px solid #e2e8f0}
+aside a{display:block;padding:12px;margin:5px 0;text-decoration:none;color:#475569;border-radius:8px}
+aside a:hover,aside a.active{background:#fef3c7;color:#92400e}
+main{padding:28px;flex:1;min-width:0}h1{margin-top:0;color:#1e293b}
+button{border:0;border-radius:7px;padding:10px 14px;background:#d97706;color:white;cursor:pointer;font-size:14px}
+button:hover{opacity:.88}.danger{background:#dc2626}.secondary{background:#64748b}
+.panel{background:white;padding:20px;border:1px solid #e2e8f0;border-radius:12px;margin:18px 0}
+input,select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:7px;margin:6px 0 12px;font:inherit}
+label{font-weight:500;font-size:14px}
+table{width:100%;border-collapse:collapse;min-width:950px}
+th,td{text-align:left;padding:13px;border-bottom:1px solid #e2e8f0}
+th{background:#fffbeb;color:#92400e;white-space:nowrap}
+.table-wrap{overflow-x:auto}.text-center{text-align:center}
+.actions{display:flex;gap:7px;justify-content:center;}
+.hidden{display:none;}
+input:disabled{background:#e2e8f0;cursor:not-allowed;color:#64748b;}
+@media(max-width:700px){.layout{display:block}aside{width:100%;display:flex;overflow:auto;padding:8px}aside a{white-space:nowrap}main{padding:16px}.panel{padding:12px}}
+</style>
+</head>
+<body>
+<header><div class="brand">Peminjaman Alat</div></header>
+<div class="layout">
+<aside>
+  <a href="dashboard.html">Dashboard</a>
+  <a href="data kategori.html">Data Kategori</a>
+  <a href="data alat.html">Data Alat</a>
+  <a href="tambah alat.html">Tambah Alat</a>
+  <a href="peminjaman.html" class="active">Peminjaman</a>
+  <a href="tambah peminjaman.html">Tambah Peminjaman</a>
+</aside>
+<main>
+  <h1>Data Peminjaman</h1>
+
+  <!-- FORM EDIT PEMINJAMAN (Disembunyikan) -->
+  <section id="panelEdit" class="panel hidden" style="border-left:4px solid #d97706;">
+    <h3>Edit Data Peminjaman</h3>
+    <form onsubmit="simpanEditPeminjaman(event)">
+      <!-- Input tersembunyi untuk menyimpan ID -->
+      <input type="hidden" id="editIdPinjam">
+      <input type="hidden" id="editIdAlat"> 
+      
+      <label>Nama Peminjam</label>
+      <input type="text" id="editNama" required>
+      
+      <label>Kelas</label>
+      <input type="text" id="editKelas" required>
+      
+      <label>Jumlah</label>
+      <input type="number" id="editJumlah" required min="1">
+      
+      <label>Status</label>
+      <select id="editStatus" required onchange="ubahStatusEdit()">
+        <option value="Dipinjam">Dipinjam</option>
+        <option value="Dikembalikan">Dikembalikan</option>
+        <option value="Terlambat">Terlambat</option> <!-- OPSI BARU -->
+      </select>
+
+      <label>Tanggal Pinjam</label>
+      <input type="date" id="editTglPinjam" required>
+
+      <label>Tanggal Kembali</label>
+      <input type="date" id="editTglKembali">
+
+      <div style="margin-top:10px;">
+        <button type="submit" style="background:#16a34a;">Simpan Perubahan</button>
+        <button type="button" class="secondary" onclick="tutupFormEdit()">Batal</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h3>Riwayat Peminjaman Alat</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="text-center">No.</th>
+            <th>Id Peminjaman</th>
+            <th>Nama Alat</th>
+            <th>Nama Peminjam</th>
+            <th>Kelas</th>
+            <th>Tanggal Pinjam</th>
+            <th>Tanggal Kembali</th>
+            <th class="text-center">Jumlah</th>
+            <th>Status</th>
+            <th class="text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tabelTransaksi"><tr><td colspan="10" class="text-center">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+</div>
+
+<script>
+const API_PEMINJAMAN = "http://localhost:3000/api/peminjaman";
+const API_ALAT = "http://localhost:3000/api/alat";
+let petaAlat = {}; 
+let cachePeminjaman = [];
+
+function ekstrakArray(hasil) {
+    if (Array.isArray(hasil)) return hasil;
+    if (hasil && Array.isArray(hasil.data)) return hasil.data;
+    if (hasil && Array.isArray(hasil.rows)) return hasil.rows;
+    return [];
+}
+
+function formatTanggal(t) {
+  if (!t) return "-";
+  const d = new Date(t);
+  if (isNaN(d)) return t;
+  return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+// Memperbarui badge warna untuk status
+function badgeStatus(status) {
+  const s = (status || "Dipinjam").toLowerCase();
+  
+  if (s.includes("terlambat")) {
+    return `<span style="padding:3px 8px;border-radius:6px;font-size:12px;background:#fee2e2;color:#991b1b;">${status}</span>`; // Merah
+  } else if (s.includes("kembali") || s.includes("selesai")) {
+    return `<span style="padding:3px 8px;border-radius:6px;font-size:12px;background:#dcfce7;color:#166534;">${status}</span>`; // Hijau
+  } else {
+    return `<span style="padding:3px 8px;border-radius:6px;font-size:12px;background:#fef3c7;color:#92400e;">${status}</span>`; // Kuning
+  }
+}
+
+async function loadPetaAlat() {
+  try {
+    const res = await fetch(API_ALAT);
+    const list = ekstrakArray(await res.json());
+    list.forEach(a => { petaAlat[a.id_alat] = a.nama_alat; });
+  } catch (e) { console.warn("Gagal load alat:", e); }
+}
+
+async function ambilPeminjaman() {
+  const tbody = document.getElementById("tabelTransaksi");
+  try {
+    const res = await fetch(API_PEMINJAMAN);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    
+    cachePeminjaman = ekstrakArray(await res.json());
+
+    if (cachePeminjaman.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="text-center">Belum ada data peminjaman.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = cachePeminjaman.map((p, i) => {
+      const idPinjam   = p.id_peminjaman ?? p.id ?? "-";
+      const idAlat     = p.id_alat ?? null;
+      const namaAlat   = p.nama_alat ?? petaAlat[idAlat] ?? `Alat ID: ${idAlat}`;
+      const peminjam   = p.nama_peminjam ?? p.nama ?? "-";
+      const kelas      = p.kelas ?? "-";
+      const tglPinjam  = p.tanggal_pinjam ?? "-";
+      const tglKembali = p.tanggal_kembali ?? "-";
+      const jumlah     = p.jumlah ?? 0;
+      const status     = p.status ?? "Dipinjam";
+
+      // TANGGAL KEMBALI KOSONG JIKA MASIH DIPINJAM
+      const tampilTglKembali = (status.toLowerCase() === "dipinjam") ? "" : formatTanggal(tglKembali);
+
+      return `
+        <tr>
+          <td class="text-center">${i + 1}</td>
+          <td>#${idPinjam}</td>
+          <td>${namaAlat}</td>
+          <td>${peminjam}</td>
+          <td>${kelas}</td>
+          <td>${formatTanggal(tglPinjam)}</td>
+          <td>${tampilTglKembali}</td>
+          <td class="text-center">${jumlah}</td>
+          <td>${badgeStatus(status)}</td>
+          <td class="text-center">
+            <div class="actions">
+              <button onclick='bukaEditPeminjaman(${JSON.stringify(p).replace(/'/g, "&apos;")})'>Edit</button>
+              <button class="danger" onclick="hapusPeminjaman(${idPinjam})">Hapus</button>
+            </div>
+          </td>
+        </tr>`;
+    }).join("");
+
+  } catch (err) {
+    console.error("Gagal load peminjaman:", err);
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center" style="color:red;font-weight:bold;">Gagal memuat data. Pastikan server backend menyala.</td></tr>`;
+  }
+}
+
+// ================= FUNGSI EDIT PEMINJAMAN =================
+function bukaEditPeminjaman(dataPeminjaman) {
+  document.getElementById("editIdPinjam").value = dataPeminjaman.id_peminjaman || dataPeminjaman.id;
+  document.getElementById("editIdAlat").value = dataPeminjaman.id_alat; 
+  
+  document.getElementById("editNama").value = dataPeminjaman.nama_peminjam || dataPeminjaman.nama || "";
+  document.getElementById("editKelas").value = dataPeminjaman.kelas || "";
+  document.getElementById("editJumlah").value = dataPeminjaman.jumlah || 1;
+  document.getElementById("editStatus").value = dataPeminjaman.status || "Dipinjam";
+  
+  document.getElementById("editTglPinjam").value = dataPeminjaman.tanggal_pinjam ? dataPeminjaman.tanggal_pinjam.split('T')[0] : "";
+  document.getElementById("editTglKembali").value = dataPeminjaman.tanggal_kembali ? dataPeminjaman.tanggal_kembali.split('T')[0] : "";
+
+  ubahStatusEdit(); 
+  document.getElementById("panelEdit").classList.remove("hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function tutupFormEdit() {
+  document.getElementById("panelEdit").classList.add("hidden");
+  document.getElementById("editIdPinjam").value = "";
+  document.getElementById("editIdAlat").value = "";
+}
+
+function ubahStatusEdit() {
+  const status = document.getElementById("editStatus").value;
+  const inputTglKembali = document.getElementById("editTglKembali");
+  
+  // Hanya kosongkan & nonaktifkan tanggal kembali jika statusnya "Dipinjam"
+  if (status.toLowerCase() === "dipinjam") {
+    inputTglKembali.value = "";
+    inputTglKembali.disabled = true; 
+  } else {
+    inputTglKembali.disabled = false; // Aktifkan jika "Dikembalikan" atau "Terlambat"
+  }
+}
+
+async function simpanEditPeminjaman(e) {
+  e.preventDefault();
+  
+  const id = document.getElementById("editIdPinjam").value;
+  const idAlat = document.getElementById("editIdAlat").value;
+  const status = document.getElementById("editStatus").value;
+  
+  let tglKembali = document.getElementById("editTglKembali").value;
+  if (status.toLowerCase() === "dipinjam") {
+    tglKembali = null; 
+  }
+
+  const dataBaru = {
+    id_alat: Number(idAlat), 
+    nama_peminjam: document.getElementById("editNama").value.trim(),
+    kelas: document.getElementById("editKelas").value.trim(),
+    jumlah: Number(document.getElementById("editJumlah").value),
+    status: status,
+    tanggal_pinjam: document.getElementById("editTglPinjam").value,
+    tanggal_kembali: tglKembali
+  };
+
+  try {
+    const res = await fetch(`${API_PEMINJAMAN}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dataBaru)
+    });
+    
+    if (res.ok) {
+      alert("Data peminjaman berhasil diupdate!");
+      tutupFormEdit();
+      ambilPeminjaman(); 
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      alert("Gagal mengupdate: " + (errData.message || "Server menolak data."));
+    }
+  } catch (err) { 
+    alert("Terjadi kesalahan jaringan: " + err.message); 
+  }
+}
+// =========================================================
+
+async function hapusPeminjaman(id) {
+  if (!confirm("Yakin ingin menghapus data peminjaman ini?")) return;
+  try {
+    const res = await fetch(`${API_PEMINJAMAN}/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      alert("Data peminjaman berhasil dihapus.");
+      ambilPeminjaman();
+    } else {
+      alert("Gagal menghapus data dari server.");
+    }
+  } catch (e) {
+    console.error(e);
+    alert("Terjadi kesalahan jaringan.");
+  }
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadPetaAlat();
+  ambilPeminjaman();
+});
+</script>
+</body>
+</html>

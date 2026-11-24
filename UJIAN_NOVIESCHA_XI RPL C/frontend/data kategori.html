@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kategori - Peminjaman Alat</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f8fafc;color:#334155}
+header{background:white;padding:16px 25px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0}
+.brand{font-size:22px;font-weight:bold;color:#d97706}
+.layout{display:flex;min-height:calc(100vh - 60px)}aside{width:220px;background:white;padding:20px;border-right:1px solid #e2e8f0}
+aside a{display:block;padding:12px;margin:5px 0;text-decoration:none;color:#475569;border-radius:8px}
+aside a:hover,aside a.active{background:#fef3c7;color:#92400e}
+main{padding:28px;flex:1;min-width:0}h1{margin-top:0;color:#1e293b}
+button{border:0;border-radius:7px;padding:10px 14px;background:#d97706;color:white;cursor:pointer;font-size:14px}
+button:hover{opacity:.88}.danger{background:#dc2626}
+.panel{background:white;padding:20px;border:1px solid #e2e8f0;border-radius:12px;margin:18px 0}
+table{width:100%;border-collapse:collapse;background:white}
+th,td{text-align:left;padding:13px;border-bottom:1px solid #e2e8f0}
+th{background:#fffbeb;color:#92400e}
+.table-wrap{overflow-x:auto}th{white-space:nowrap}.text-center{text-align:center}
+.actions{display:flex;gap:7px}
+@media(max-width:700px){.layout{display:block}aside{width:100%;display:flex;overflow:auto;padding:8px}aside a{white-space:nowrap}main{padding:16px}.panel{overflow:auto}}
+</style>
+</head>
+<body>
+<header><div class="brand">Peminjaman Alat</div></header>
+<div class="layout">
+<aside>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="data kategori.html" class="active">Data Kategori</a>
+    <a href="data alat.html">Data Alat</a>
+    <a href="tambah alat.html">Tambah Alat</a>
+    <a href="peminjaman.html">Peminjaman</a>
+    <a href="tambah peminjaman.html">Tambah Peminjaman</a>
+</aside>
+<main>
+    <h1>Manajemen Kategori</h1>
+    <p>Daftar kategori alat yang tersedia.</p>
+
+    <section class="panel">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th class="text-center">No.</th><th>Nama Kategori</th><th>Deskripsi</th></tr>
+                </thead>
+                <tbody id="tabelKategori"><tr><td colspan="3" class="text-center">Memuat data...</td></tr></tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</div>
+
+<script>
+const API_URL = "http://localhost:3000/api/kategori";
+
+function ekstrakArray(hasil) {
+    if (Array.isArray(hasil)) return hasil;
+    if (hasil && Array.isArray(hasil.data)) return hasil.data;
+    if (hasil && Array.isArray(hasil.rows)) return hasil.rows;
+    return [];
+}
+
+async function ambilDataKategori() {
+    const tabelBody = document.getElementById("tabelKategori");
+    try {
+        const res = await fetch(API_URL);
+        const hasil = await res.json();
+        const data = ekstrakArray(hasil);
+        
+        if (data.length > 0) {
+            tabelBody.innerHTML = data.map((k, i) => `
+                <tr>
+                    <td class="text-center">${i + 1}</td>
+                    <td style="white-space: nowrap;">${k.nama_kategori || "-"}</td>
+                    <td>${k.deskripsi || "-"}</td>
+                </tr>
+            `).join("");
+        } else {
+            tabelBody.innerHTML = '<tr><td colspan="3" class="text-center">Belum ada kategori.</td></tr>';
+        }
+    } catch (error) {
+        tabelBody.innerHTML = '<tr><td colspan="3" class="text-center" style="color:red;">Gagal memuat data.</td></tr>';
+    }
+}
+
+document.addEventListener("DOMContentLoaded", ambilDataKategori);
+</script>
+</body>
+</html>

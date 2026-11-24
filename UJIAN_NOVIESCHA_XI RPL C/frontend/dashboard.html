@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Peminjaman Alat</title>
+    <style>
+        /* CSS Dasar */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f3f4f6; /* Warna abu-abu muda */
+            color: #1f2937;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(to right, #b45309, #78350f); /* Cokelat */
+            color: white;
+            padding: 20px 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        header h1 { margin: 0; font-size: 24px; }
+        header p { margin: 5px 0 0 0; font-size: 14px; color: #fde68a; }
+
+        /* Layout */
+        .layout {
+            display: flex;
+            min-height: calc(100vh - 85px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background-color: white;
+            padding: 20px;
+            border-right: 1px solid #e5e7eb;
+        }
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #9ca3af;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+        .sidebar a {
+            display: block;
+            padding: 12px 15px;
+            margin-bottom: 5px;
+            text-decoration: none;
+            color: #4b5563;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .sidebar a:hover {
+            background-color: #fef3c7; /* Kuning muda */
+            color: #92400e;
+        }
+        .sidebar a.active {
+            background-color: #92400e; /* Cokelat gelap */
+            color: white;
+        }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            padding: 30px;
+        }
+        .page-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 25px;
+            margin-top: 0;
+            color: #1e293b;
+        }
+
+        /* Kartu Statistik */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat-card.border-amber { border-left: 5px solid #d97706; }
+        .stat-card.border-green { border-left: 5px solid #16a34a; }
+        .stat-card.border-blue { border-left: 5px solid #2563eb; }
+        
+        .stat-label { color: #6b7280; margin: 0; font-size: 14px; }
+        .stat-value { font-size: 32px; font-weight: bold; margin-top: 8px; margin-bottom: 0;}
+        .text-amber { color: #b45309; }
+        .text-green { color: #15803d; }
+        .text-blue { color: #1d4ed8; }
+
+        /* Welcome Card */
+        .welcome-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .welcome-card h2 { margin-top: 0; font-size: 20px; color: #1e293b; }
+        .welcome-card p { color: #4b5563; margin-bottom: 0; line-height: 1.5; }
+
+        /* Responsif untuk HP */
+        @media (max-width: 768px) {
+            .layout { display: block; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e5e7eb; padding: 10px; display: flex; overflow-x: auto; }
+            .sidebar-title { display: none; }
+            .sidebar a { white-space: nowrap; margin-bottom: 0; margin-right: 5px; }
+            main { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Peminjaman Alat</h1>
+        <p>Menyediakan berbagai alat</p>
+    </header>
+
+    <div class="layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-title">MENU UTAMA</div>
+            <a href="dashboard.html" class="active">🏠 Dashboard</a>
+            <a href="data kategori.html">📦 Data Kategori</a>
+            <a href="data alat.html">🗂️ Data Alat</a>
+            <a href="tambah alat.html">🛒 Tambah Alat</a>
+            <a href="peminjaman.html">👤 Peminjaman</a>
+            <a href="tambah peminjaman.html">👥 Tambah Peminjaman</a>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main>
+            <h1 class="page-title">Dashboard</h1>
+
+            <div class="stats-grid">
+                <div class="stat-card border-amber">
+                    <p class="stat-label">Jumlah Alat</p>
+                    <p id="statProduk" class="stat-value text-amber">0</p>
+                </div>
+                <div class="stat-card border-green">
+                    <p class="stat-label">Total Kategori</p>
+                    <p id="statKategori" class="stat-value text-green">0</p>
+                </div>
+                <div class="stat-card border-blue">
+                    <p class="stat-label">Jumlah Peminjaman</p>
+                    <p id="statPengguna" class="stat-value text-blue">0</p>
+                </div>
+            </div>
+            
+            <div class="welcome-card">
+                <h2>Selamat Datang 👋</h2>
+                <p id="welcomeText">Memuat data...</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_ALAT = "http://localhost:3000/api/alat";
+        const API_KATEGORI = "http://localhost:3000/api/kategori";
+        const API_PEMINJAMAN = "http://localhost:3000/api/peminjaman";
+
+        function ekstrakArray(hasil) {
+            if (Array.isArray(hasil)) return hasil;
+            if (hasil && Array.isArray(hasil.data)) return hasil.data;
+            if (hasil && Array.isArray(hasil.rows)) return hasil.rows; 
+            return [];
+        }
+
+        async function hitung(url) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return 0;
+                const j = await res.json();
+                return ekstrakArray(j).length;
+            } catch (e) { return 0; }
+        }
+
+        async function loadStatistik() {
+            const [alat, kategori, peminjaman] = await Promise.all([
+                hitung(API_ALAT), hitung(API_KATEGORI), hitung(API_PEMINJAMAN)
+            ]);
+            document.getElementById("statProduk").textContent = alat;
+            document.getElementById("statKategori").textContent = kategori;
+            document.getElementById("statPengguna").textContent = peminjaman;
+            document.getElementById("welcomeText").textContent = "Selamat datang di sistem Peminjaman Alat. Gunakan menu di samping untuk mengelola data.";
+        }
+
+        document.addEventListener("DOMContentLoaded", loadStatistik);
+    </script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tambah Peminjaman - Peminjaman Alat</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f8fafc;color:#334155}
+header{background:white;padding:16px 25px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0}
+.brand{font-size:22px;font-weight:bold;color:#d97706}
+.layout{display:flex;min-height:calc(100vh - 60px)}
+aside{width:220px;background:white;padding:20px;border-right:1px solid #e2e8f0}
+aside a{display:block;padding:12px;margin:5px 0;text-decoration:none;color:#475569;border-radius:8px}
+aside a:hover,aside a.active{background:#fef3c7;color:#92400e}
+main{padding:28px;flex:1;min-width:0}
+h1{margin-top:0;color:#1e293b}
+button{border:0;border-radius:7px;padding:10px 14px;background:#d97706;color:white;cursor:pointer;font-size:14px}
+button:hover{opacity:.88}
+.secondary{background:#64748b}
+.panel{background:white;padding:20px;border:1px solid #e2e8f0;border-radius:12px;margin:18px 0;max-width:600px}
+input,select,textarea{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:7px;margin:6px 0 12px;font:inherit}
+input:disabled{background:#e2e8f0;cursor:not-allowed;color:#64748b;}
+label{font-weight:500;font-size:14px}
+.info-stok{font-size:12px;color:#64748b;margin-top:-8px;margin-bottom:10px;font-weight:bold;}
+@media(max-width:700px){
+  .layout{display:block}
+  aside{width:100%;display:flex;overflow:auto;padding:8px}
+  aside a{white-space:nowrap}
+  main{padding:16px}
+  .panel{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Peminjaman Alat</div>
+</header>
+
+<div class="layout">
+<aside>
+  <a href="dashboard.html">Dashboard</a>
+  <a href="data kategori.html">Data Kategori</a>
+  <a href="data alat.html">Data Alat</a>
+  <a href="tambah alat.html">Tambah Alat</a>
+  <a href="peminjaman.html">Peminjaman</a>
+  <a href="tambah peminjaman.html" class="active">Tambah Peminjaman</a>
+</aside>
+
+<main>
+  <h1>Tambah Peminjaman Baru</h1>
+  <p>Silakan isi formulir di bawah ini untuk mencatat peminjaman alat.</p>
+
+  <section class="panel">
+    <form onsubmit="simpanPeminjaman(event)">
+
+      <label>Pilih Alat</label>
+      <select id="pilihAlat" required>
+        <option value="">-- Pilih Alat --</option>
+      </select>
+      <div class="info-stok" id="infoStok"></div>
+
+      <label>Nama Peminjam</label>
+      <input type="text" id="namaPeminjam" required placeholder="Contoh: Noviescha">
+
+      <label>Kelas</label>
+      <input type="text" id="kelasPeminjam" required placeholder="Contoh: XI RPL C">
+
+      <label>Jumlah Pinjam</label>
+      <input type="number" id="jumlahPinjam" required min="1" placeholder="Contoh: 2">
+
+      <label>Tanggal Pinjam</label>
+      <input type="date" id="tanggalPinjam" required>
+
+      <!-- TANGGAL KEMBALI: Kosong dan Disabled secara default -->
+      <label>Tanggal Kembali (Kosongkan jika masih dipinjam)</label>
+      <input type="date" id="tanggalKembali" disabled>
+
+      <div style="margin-top:20px">
+        <button type="submit">Simpan Peminjaman</button>
+        <button type="button" class="secondary"
+                onclick="window.location.href='peminjaman.html'">Batal</button>
+      </div>
+    </form>
+  </section>
+</main>
+</div>
+
+<script>
+const API_ALAT = "http://localhost:3000/api/alat";
+const API_PEMINJAMAN = "http://localhost:3000/api/peminjaman";
+
+let daftarAlat = [];
+
+// Fungsi sakti untuk membaca response backend (format apapun)
+function ekstrakArray(hasil) {
+  if (Array.isArray(hasil)) return hasil;
+  if (hasil && Array.isArray(hasil.data)) return hasil.data;
+  if (hasil && Array.isArray(hasil.rows)) return hasil.rows;
+  return [];
+}
+
+/* ---------- LOAD DROPDOWN ALAT ---------- */
+async function loadAlat() {
+  const selectAlat = document.getElementById("pilihAlat");
+  try {
+    const response = await fetch(API_ALAT);
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    
+    const hasil = await response.json();
+    const data = ekstrakArray(hasil);
+
+    if (data.length === 0) {
+      selectAlat.innerHTML = '<option value="">(Belum ada alat)</option>';
+      return;
+    }
+
+    daftarAlat = data;
+    selectAlat.innerHTML = '<option value="">-- Pilih Alat --</option>';
+    
+    data.forEach(alat => {
+      const option = document.createElement("option");
+      option.value = alat.id_alat;
+      option.textContent = `${alat.nama_alat} (Stok: ${alat.stok ?? 0})`;
+      selectAlat.add(option);
+    });
+  } catch (error) {
+    console.error("Gagal load alat:", error);
+    selectAlat.innerHTML = '<option value="">Gagal memuat data alat</option>';
+  }
+}
+
+/* ---------- INFO STOK SAAT PILIH ALAT ---------- */
+document.addEventListener("DOMContentLoaded", () => {
+  loadAlat();
+
+  const select = document.getElementById("pilihAlat");
+  select.addEventListener("change", () => {
+    const id = select.value;
+    const info = document.getElementById("infoStok");
+    const jumlah = document.getElementById("jumlahPinjam");
+    
+    const alat = daftarAlat.find(a => String(a.id_alat) === String(id));
+
+    if (alat) {
+      const stok = Number(alat.stok ?? 0);
+      info.textContent = `Stok tersedia: ${stok}`;
+      info.style.color = stok > 0 ? "#166534" : "#dc2626";
+      jumlah.max = stok;
+      jumlah.value = "";
+    } else {
+      info.textContent = "";
+      jumlah.removeAttribute("max");
+    }
+  });
+});
+
+/* ---------- SIMPAN PEMINJAMAN ---------- */
+async function simpanPeminjaman(e) {
+  e.preventDefault();
+
+  const idAlat = document.getElementById("pilihAlat").value;
+  const namaPeminjam = document.getElementById("namaPeminjam").value.trim();
+  const kelas = document.getElementById("kelasPeminjam").value.trim();
+  const jumlah = Number(document.getElementById("jumlahPinjam").value);
+  const tanggalPinjam = document.getElementById("tanggalPinjam").value;
+  
+  // Tanggal kembali kita set null karena status defaultnya adalah "Dipinjam"
+  const tanggalKembali = null;
+
+  // Validasi Form
+  if (!idAlat) return alert("Pilih alat terlebih dahulu.");
+  if (!namaPeminjam) return alert("Nama peminjam wajib diisi.");
+  if (!kelas) return alert("Kelas wajib diisi.");
+  if (!jumlah || jumlah < 1) return alert("Jumlah pinjam minimal 1.");
+  if (!tanggalPinjam) return alert("Tanggal pinjam wajib diisi.");
+
+  // Validasi Stok
+  const alat = daftarAlat.find(a => String(a.id_alat) === String(idAlat));
+  if (!alat) return alert("Data alat tidak ditemukan.");
+  
+  const stok = Number(alat.stok ?? 0);
+  if (jumlah > stok)
+    return alert(`Stok tidak cukup. Stok tersedia: ${stok}, yang diminta: ${jumlah}.`);
+
+  // Data yang akan dikirim ke backend
+  const dataPeminjaman = {
+    id_alat: Number(idAlat),
+    nama_peminjam: namaPeminjam,
+    kelas: kelas,
+    jumlah: jumlah,
+    tanggal_pinjam: tanggalPinjam,
+    tanggal_kembali: tanggalKembali,
+    status: "Dipinjam"
+  };
+
+  try {
+    const response = await fetch(API_PEMINJAMAN, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dataPeminjaman)
+    });
+
+    const hasil = await response.json().catch(() => ({}));
+
+    if (response.ok) {
+      alert("Peminjaman berhasil dicatat!");
+      window.location.href = "peminjaman.html";
+    } else {
+      alert("Gagal menyimpan: " + (hasil.message || "Periksa backend Anda."));
+    }
+  } catch (error) {
+    console.error("Error saat menyimpan:", error);
+    alert("Terjadi kesalahan jaringan/server. Cek terminal backend Anda.");
+  }
+}
+</script>
+</body>
+</html>
